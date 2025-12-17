@@ -7,8 +7,8 @@ from itertools import product, combinations
 
 
 def get_light_vector():
-    diode0 = MCP3008(3)
-    diode1 = MCP3008(1)
+    diode0 = MCP3008(0)
+    diode1 = MCP3008(3)
     diode2 = MCP3008(4)
     I_x = diode0.value
     I_y = diode1.value

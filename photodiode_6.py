@@ -1,34 +1,40 @@
 from gpiozero import MCP3008
+from gpiozero.pins.native import NativeFactory
 from time import sleep
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from itertools import product, combinations
 
-#      diode0 = +x
-#      diode1 = +z
-#      diode2 = -y
-#      diode3 = +y
+#      diode1 = -y
+#      diode2 = -z
+#      diode3 = +x
 #      diode4 = -x
-#      diode5 = -z
+#      diode5 = +y
+#      diode6 = +z
+
+factory = NativeFactory()
+
 DIRECTIONS = np.array([
-    [ 1,  0,  0],  # diode0, side1
-    [ 0,  0,  1],  # diode1, side2
-    [ 0, -1,  0],  # diode2, side3
-    [ 0,  1,  0],  # diode3, side4
-    [-1,  0,  0],  # diode4, side5
-    [ 0,  0, -1],  # diode5, side6
+    [ 0,  -1,  0],  # diode1, side1
+    [ 0,  0,  -1],  # diode2, side2
+    [ 1, 0,  0],  # diode3, side3
+    [ -1,  0,  0],  # diode4, side4
+    [ 0,  1,  0],  # diode5, side5
+    [ 0,  0, 1],  # diode6, side6
 ])
 
 def get_light_vector():
-    diode0 = MCP3008(0).value
-    diode1 = MCP3008(1).value
-    diode2 = MCP3008(2).value
-    diode3 = MCP3008(3).value
-    diode4 = MCP3008(4).value
-    diode5 = MCP3008(5).value
+    diode0 = MCP3008(0, pin_factory=factory).value
+    diode1 = MCP3008(1, pin_factory=factory).value
+    diode2 = MCP3008(2, pin_factory=factory).value
+    diode3 = MCP3008(3, pin_factory=factory).value
+    diode4 = MCP3008(4, pin_factory=factory).value
+    diode5 = MCP3008(5, pin_factory=factory).value
 
     intensities = np.array([diode0, diode1, diode2, diode3, diode4, diode5])
+
+    # intensities[intensities < 0.01] = 0
 
     #idx_top3" will be the indices of the top 3 diodes in descending order
     idx_top3 = np.argsort(intensities)[-3:]  # last 3 of sorted array = top 3
@@ -58,6 +64,9 @@ def visualize_vector(initial_vec, initial_int, initial_mag):
     ax.set_xlim([-2, 2])
     ax.set_ylim([-2, 2])
     ax.set_zlim([-2, 2])
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.set_zlabel("Z")
 
     draw_cube(ax, edge=0.5)
 
@@ -133,38 +142,38 @@ def visualize_vector(initial_vec, initial_int, initial_mag):
                 arrow_length_ratio=0.1
             )
             quiv0 = ax.quiver(
-                0.5, 0, 0,
-                intensities[0]/magnitude, 0, 0,
+                0, -0.5, 0,
+                0, -intensities[0]/magnitude, 0,
                 color='green',
                 arrow_length_ratio=0.1
             )
             quiv1 = ax.quiver(
-                0, 0, 0.5,
-                0, 0, intensities[1]/magnitude,
+                0, 0, -0.5,
+                0, 0, -intensities[1]/magnitude,
                 color='green',
                 arrow_length_ratio=0.1
             )
             quiv2 = ax.quiver(
-                0, -0.5, 0,
-                0, -intensities[2]/magnitude, 0,
+                0.5, 0, 0,
+                intensities[2]/magnitude, 0, 0,
                 color='green',
                 arrow_length_ratio=0.1
             )
             quiv3 = ax.quiver(
-                0, 0.5, 0,
-                0, intensities[3]/magnitude, 0,
+                -0.5, 0, 0,
+                -intensities[3]/magnitude, 0, 0,
                 color='green',
                 arrow_length_ratio=0.1
             )
             quiv4 = ax.quiver(
-                -0.5, 0, 0,
-                -intensities[4]/magnitude, 0, 0,
+                0, 0.5, 0,
+                0, intensities[4]/magnitude, 0,
                 color='green',
                 arrow_length_ratio=0.1
             )
             quiv5 = ax.quiver(
-                0, 0, -0.5,
-                0, 0, -intensities[5]/magnitude,
+                0, 0, 0.5,
+                0, 0, intensities[5]/magnitude,
                 color='green',
                 arrow_length_ratio=0.1
             )
@@ -174,5 +183,6 @@ def visualize_vector(initial_vec, initial_int, initial_mag):
     except KeyboardInterrupt:
         plt.close(fig)
 
-init_light_vector, init_intensities , init_magnitude = get_light_vector() 
-visualize_vector(init_light_vector, init_intensities, init_magnitude)
+if __name__ == "__main__":
+    init_light_vector, init_intensities , init_magnitude = get_light_vector() 
+    visualize_vector(init_light_vector, init_intensities, init_magnitude)

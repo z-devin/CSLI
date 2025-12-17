@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from itertools import product, combinations
+import csv
 
 def draw_cube(ax, edge=0.5):
     r = [-edge, edge]
@@ -72,14 +73,21 @@ def visualize_vector(new_vec, quiv, ax):
     return quiv
 
 from smbus2 import SMBus
-import RPi.GPIO as GPIO
-from time import sleep
+# import RPi.GPIO as GPIO
+import lgpio
+from time import sleep, time
 import numpy as np
 
 address = 12
 
-GPIO.setmode(GPIO.BOARD)
-GPIO.setup(7, GPIO.IN)
+# GPIO.setmode(GPIO.BOARD)
+# GPIO.setup(7, GPIO.IN)
+
+h = lgpio.gpiochip_open(0)
+DRDY_pin = 4
+RSTN_pin = 17
+lgpio.gpio_claim_input(h, DRDY_pin)
+lgpio.gpio_claim_output(h, RSTN_pin, level=1)  # start high
 
 #DRDY_read = GPIO.input(7)
 #print(DRDY_read)
@@ -94,7 +102,6 @@ def ttod(bin_str): # twos complement to decimal
     temp_str_2 = '0'*(len(bin_str)-1)
     temp_str_2 = bin_str[0]+ temp_str_2
     temp_int_2 = int(temp_str_2, base=2)
-    
     output = -temp_int_2+temp_int
 
     return output
@@ -109,10 +116,20 @@ def magnetometer_setup(bus):
     # bus.write_byte_data(address, 0x32, 0b00010000)  # Self-test mode
     bus.write_byte_data(address, 0x32, 0b00001000)  # continuos reading mode (100 Hz)
 
-def read_magnetometer():
+def reset_magnetometer(bus):
+    lgpio.gpio_write(h, RSTN_pin, 0)
+    sleep(0.05)  # TODO: this is probably not the best way to do this, will freeze entire program
+    lgpio.gpio_write(h, RSTN_pin, 1)
+    magnetometer_setup(bus)
+
+def read_magnetometer(bus):
     try:
-        while not GPIO.input(7):    # Check for data ready
-            pass
+        # while not GPIO.input(7):    # Check for data ready
+        start_time = time()
+        while not lgpio.gpio_read(h, DRDY_pin):
+            if time() - start_time > 0.3:
+                reset_magnetometer(bus)
+                raise TimeoutError
         # print(GPIO.input(7))
 
         data = bus.read_i2c_block_data(address, 0x11, 9)    # Read data
@@ -135,24 +152,39 @@ def read_magnetometer():
         print(f"Y: ", y_data)
         print(f"Z: ", z_data)
         print(f"Magnitude: {np.linalg.norm([x_data, y_data, z_data])}")"""
+        # print(f"Magnetometer: {out}")
 
         st2 = bus.read_byte_data(address, 0x1B)     # Read ST2 required
+    except TimeoutError:
+        st2 = bus.read_byte_data(address, 0x1B)     # Read ST2 required
+        return read_magnetometer(bus)  # TODO: this may be bad, could lead to getting stuck in infinite loop 
     except Exception as e:
         st2 = bus.read_byte_data(address, 0x1B)     # Read ST2 required
         raise e
         # print("st2 read")
     return out
+if __name__ == "__main__":
 
-with SMBus(1) as bus:
-    magnetometer_setup(bus)
-    quiv, ax = graphics_setup()
-    while True:
-        new_vec = read_magnetometer()
-        new_vec /= np.linalg.norm(new_vec)
-        print(new_vec)
-        quiv = visualize_vector(new_vec, quiv, ax)
+    with SMBus(1) as bus:
+        magnetometer_setup(bus)
+        quiv, ax = graphics_setup()
 
-GPIO.cleanup()
+        with open('mag_data.csv', 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['x', 'y', 'z'])
+
+            while True:
+                new_vec = read_magnetometer(bus)
+                new_vec /= np.linalg.norm(new_vec)
+                writer.writerow(new_vec)
+                f.flush()
+                print(new_vec)
+                quiv = visualize_vector(new_vec, quiv, ax)
+
+#GPIO.cleanup()
+lgpio.gpio_free(h, DRDY_pin)
+lgpio.gpio_free(h, RSTN_pin)
+lgpio.gpiochip_close(h)
 # 0b1011
 # 0x456
 
