@@ -5,6 +5,35 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from itertools import product, combinations
 import csv
+from smbus2 import SMBus
+# import RPi.GPIO as GPIO
+import lgpio
+from time import sleep, time
+import numpy as np
+
+address = 12
+
+# GPIO.setmode(GPIO.BOARD)
+# GPIO.setup(7, GPIO.IN)
+
+h = lgpio.gpiochip_open(0)
+DRDY_pin = 4
+RSTN_pin = 17
+lgpio.gpio_claim_input(h, DRDY_pin)
+lgpio.gpio_claim_output(h, RSTN_pin, level=1)  # start high
+
+#DRDY_read = GPIO.input(7)
+#print(DRDY_read)
+
+# To fix GPIO permissions errors run:
+# sudo chown cubesat /dev/gpiomem
+# sudo chmod g+rw /dev/gpiomem
+
+def wait_drdy():
+    start = time()
+    while not lgpio.gpio_read(h, DRDY_pin):
+        if time() - start > 0.3:
+            raise TimeoutError("DRDY timeout")
 
 def draw_cube(ax, edge=0.5):
     r = [-edge, edge]
@@ -72,30 +101,6 @@ def visualize_vector(new_vec, quiv, ax):
     plt.pause(0.011)
     return quiv
 
-from smbus2 import SMBus
-# import RPi.GPIO as GPIO
-import lgpio
-from time import sleep, time
-import numpy as np
-
-address = 12
-
-# GPIO.setmode(GPIO.BOARD)
-# GPIO.setup(7, GPIO.IN)
-
-h = lgpio.gpiochip_open(0)
-DRDY_pin = 4
-RSTN_pin = 17
-lgpio.gpio_claim_input(h, DRDY_pin)
-lgpio.gpio_claim_output(h, RSTN_pin, level=1)  # start high
-
-#DRDY_read = GPIO.input(7)
-#print(DRDY_read)
-
-# To fix GPIO permissions errors run:
-# sudo chown cubesat /dev/gpiomem
-# sudo chmod g+rw /dev/gpiomem
-
 def ttod(bin_str): # twos complement to decimal    
     temp_int = int(bin_str[1:], base=2)
 
@@ -141,12 +146,14 @@ def read_magnetometer(bus):
         z_data = measure2dec(data[6:9])
 
         d = np.array([x_data, y_data, z_data])
-        A = np.array([[0.9318, -0.0353, -0.0041],
-                      [-0.0353, 0.9532, 0.0912],
-                      [-0.0041, 0.0912, 1.1362]])
-        b = np.array([3.274e3, -7.9187e3, -1.6536e4])
+        A = np.array([[1.0274, -0.0058, 0.0192],
+                      [-0.0058, 1.0302, 0.0149],
+                      [0.0192, 0.0149, 0.9455]])
+        b = np.array([2.4272e3, -1.0466e4, -1.8667e4])              
 
-        out=(d-b)@A
+        scale_factors = np.array([10.0954277, 9.96587204, 10.33529979])
+
+        out=(d-b)@A * scale_factors
 
         """print(f"X: ", x_data)
         print(f"Y: ", y_data)
@@ -169,17 +176,17 @@ if __name__ == "__main__":
         magnetometer_setup(bus)
         quiv, ax = graphics_setup()
 
-        with open('mag_data.csv', 'w', newline='') as f:
+        with open('mag_data_calibrate.csv', 'w', newline='') as f:
             writer = csv.writer(f)
             writer.writerow(['x', 'y', 'z'])
 
             while True:
                 new_vec = read_magnetometer(bus)
-                new_vec /= np.linalg.norm(new_vec)
+                #new_vec /= np.linalg.norm(new_vec)
                 writer.writerow(new_vec)
                 f.flush()
                 print(new_vec)
-                quiv = visualize_vector(new_vec, quiv, ax)
+                # quiv = visualize_vector(new_vec, quiv, ax)
 
 #GPIO.cleanup()
 lgpio.gpio_free(h, DRDY_pin)

@@ -72,7 +72,7 @@ with SMBus(1) as bus:
             print(new_vec)
             data = np.vstack([data, new_vec])
         except Exception as e:
-            f = open("data2.csv", "ab")
+            f = open("mag_data_calibrate.csv", "ab")
             np.savetxt(f, data, delimiter=",")
             f.close()
             raise e
