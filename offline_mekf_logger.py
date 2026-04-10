@@ -46,10 +46,31 @@ bus.write_byte_data(IMU_ADDR, 0x1A, 2)
 bus.write_byte_data(IMU_ADDR, 0x1B, 0)  # ±250°/s
 bus.write_byte_data(IMU_ADDR, 0x38, 1)
 
-# TRIAD reference vectors
-r1_inertial = np.array([1.0, 0.0, 0.0])
-B_NED = np.array([12873.57038512, -38496.69756254, 3597.52320875])
-r2_inertial = B_NED / np.linalg.norm(B_NED)
+################### Set reference vectors from initial readings ###################
+print("Reading initial sensor values for reference vectors...")
+time.sleep(0.5)
+
+sun_samples = []
+mag_samples = []
+for _ in range(50):
+    try:
+        sv, _, _ = get_light_vector()
+        sun_samples.append(sv)
+    except:
+        pass
+    try:
+        wait_for_mag_ready()
+        mv = read_mag_data(bus)
+        mag_samples.append(mv)
+    except:
+        pass
+    time.sleep(0.02)
+
+r1_inertial = normalize(np.mean(sun_samples, axis=0))
+r2_inertial = normalize(np.mean(mag_samples, axis=0))
+
+print(f"r1_inertial (sun): [{r1_inertial[0]:.4f}, {r1_inertial[1]:.4f}, {r1_inertial[2]:.4f}]")
+print(f"r2_inertial (mag): [{r2_inertial[0]:.4f}, {r2_inertial[1]:.4f}, {r2_inertial[2]:.4f}]")
 
 
 def read_gyro_direct():
@@ -110,7 +131,7 @@ print(f"Gyro bias: [{np.degrees(gyro_bias[0]):.3f}, {np.degrees(gyro_bias[1]):.3
 print(f"Gyro noise: [{np.degrees(gyro_bias_std[0]):.3f}, {np.degrees(gyro_bias_std[1]):.3f}, {np.degrees(gyro_bias_std[2]):.3f}] deg/s")
 print(f"Calibration samples: {len(cal_samples)}")
 
-with open('0deg_gyro_calibration.csv', 'w', newline='') as f:
+with open('30deg_gyro_calibration.csv', 'w', newline='') as f:
     writer = csv.writer(f)
     writer.writerow(['bias_gx', 'bias_gy', 'bias_gz', 'noise_gx', 'noise_gy', 'noise_gz'])
     writer.writerow([gyro_bias[0], gyro_bias[1], gyro_bias[2],
@@ -152,10 +173,10 @@ for s in check[:5]:
     print(f"  [{np.degrees(corrected[0]):.3f}, {np.degrees(corrected[1]):.3f}, {np.degrees(corrected[2]):.3f}] deg/s")
 
 ################### Open Log Files ###################
-imu_file = open('0deg_imu_log.csv', 'w', newline='')
-triad_file = open('0deg_triad_log.csv', 'w', newline='')
-mag_file = open('0deg_mag_log.csv', 'w', newline='')
-sun_file = open('0deg_sun_log.csv', 'w', newline='')
+imu_file = open('30deg_imu_log.csv', 'w', newline='')
+triad_file = open('30deg_triad_log.csv', 'w', newline='')
+mag_file = open('30deg_mag_log.csv', 'w', newline='')
+sun_file = open('30deg_sun_log.csv', 'w', newline='')
 
 imu_writer = csv.writer(imu_file)
 triad_writer = csv.writer(triad_file)

@@ -52,7 +52,7 @@ def read_mag_data(bus):
                   [-0.0058, 1.0302, 0.0149],
                   [0.0192, 0.0149, 0.9455]])
     b = np.array([2.4272e3, -1.0466e4, -1.8667e4])
-    scale_factors = np.array([10.08706565, 9.95520947, 10.33009517])
+    scale_factors = np.array([10.07379091, 9.9308472, 10.3128265])
 
     return (d - b) @ A * scale_factors
 

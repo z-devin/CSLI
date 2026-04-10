@@ -27,20 +27,16 @@ DIRECTIONS = np.array([
 
 def get_light_vector():
     intensities = np.array([d.value for d in diodes])
-
-    # intensities[intensities < 0.01] = 0
-
-    #idx_top3" will be the indices of the top 3 diodes in descending order
-    idx_top3 = np.argsort(intensities)[-3:]  # last 3 of sorted array = top 3
-
-    #v = (I0 * dir0) + (I1 * dir1) + (I2 * dir2)
+    
+    # Each intensity is the sun vector component along that face normal
+    # Faces pointing away read ~0 naturally (cosine law)
     v = np.zeros(3)
-    for i in idx_top3:
+    for i in range(6):
         v += intensities[i] * DIRECTIONS[i]
-
-    mag = np.linalg.norm(v) + 1e-12  # small epsilon to avoid zero-div
+    
+    mag = np.linalg.norm(v) + 1e-12
     sun_vec = v / mag
-
+    
     return sun_vec, intensities, mag
 
 def draw_cube(ax, edge=0.5):
@@ -178,5 +174,8 @@ def visualize_vector(initial_vec, initial_int, initial_mag):
         plt.close(fig)
 
 if __name__ == "__main__":
-    init_light_vector, init_intensities , init_magnitude = get_light_vector() 
-    visualize_vector(init_light_vector, init_intensities, init_magnitude)
+    while True:
+        init_light_vector, init_intensities , init_magnitude = get_light_vector() 
+    # visualize_vector(init_light_vector, init_intensities, init_magnitude)
+        print(init_light_vector)
+        sleep(1)
