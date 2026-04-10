@@ -6,33 +6,27 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from itertools import product, combinations
 
-#      diode1 = -y
+#      diode1 = +y
 #      diode2 = -z
-#      diode3 = +x
-#      diode4 = -x
-#      diode5 = +y
+#      diode3 = -x
+#      diode4 = +x
+#      diode5 = -y
 #      diode6 = +z
 
 factory = NativeFactory()
+diodes = [MCP3008(i, pin_factory=factory) for i in range(6)]
 
 DIRECTIONS = np.array([
-    [ 0,  -1,  0],  # diode1, side1
+    [ 0,  1,  0],  # diode1, side1
     [ 0,  0,  -1],  # diode2, side2
-    [ 1, 0,  0],  # diode3, side3
-    [ -1,  0,  0],  # diode4, side4
-    [ 0,  1,  0],  # diode5, side5
+    [ -1, 0,  0],  # diode3, side3
+    [ 1,  0,  0],  # diode4, side4
+    [ 0,  -1,  0],  # diode5, side5
     [ 0,  0, 1],  # diode6, side6
 ])
 
 def get_light_vector():
-    diode0 = MCP3008(0, pin_factory=factory).value
-    diode1 = MCP3008(1, pin_factory=factory).value
-    diode2 = MCP3008(2, pin_factory=factory).value
-    diode3 = MCP3008(3, pin_factory=factory).value
-    diode4 = MCP3008(4, pin_factory=factory).value
-    diode5 = MCP3008(5, pin_factory=factory).value
-
-    intensities = np.array([diode0, diode1, diode2, diode3, diode4, diode5])
+    intensities = np.array([d.value for d in diodes])
 
     # intensities[intensities < 0.01] = 0
 

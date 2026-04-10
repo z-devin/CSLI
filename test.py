@@ -1,114 +1,54 @@
-import spidev
+from smbus2 import SMBus
+from magnetometer_visual_updated import magnetometer_setup
 import time
 import numpy as np
-import matplotlib.pyplot as plt
 
-# Setup SPI
-spi = spidev.SpiDev()
-spi.open(0, 0)  # Bus 0, Device 0
-spi.max_speed_hz = 500000  # Reduced to 500kHz for more stability
-spi.mode = 0
-spi.bits_per_word = 8  # Explicitly set bits per word
+bus = SMBus(1)
+magnetometer_setup(bus)
+time.sleep(0.1)
 
-def read_adc(channel):
-    """
-    Read the specified ADC channel using hardware SPI
-    """
-    # Construct the command bytes for MCP3008
-    cmd = [0x01, (0x08 + channel) << 4, 0x00]
-    
-    # Send command and get response
-    resp = spi.xfer2(cmd)
-    
-    # Extract the 10-bit value
-    adc_value = ((resp[1] & 0x03) << 8) + resp[2]
-    
-    # Convert to voltage (0-3.3V)
-    voltage = adc_value * 3.3 / 1023.0
-    
-    return voltage
+IMU_ADDR = 0x68
+bus.write_byte_data(IMU_ADDR, 0x6B, 1)
+bus.write_byte_data(IMU_ADDR, 0x1B, 0)
 
-def get_intensities():
-    # Read values from all 6 channels
-    array = np.array([
-        read_adc(0),
-        read_adc(1),
-        read_adc(2),
-        read_adc(3),
-        read_adc(4),
-        read_adc(5)
-    ])
-    print(array)
-    return array
+def read_gyro():
+    raw = bus.read_i2c_block_data(IMU_ADDR, 0x43, 6)
+    gx = (raw[0] << 8) | raw[1]
+    gy = (raw[2] << 8) | raw[3]
+    gz = (raw[4] << 8) | raw[5]
+    if gx > 32768: gx -= 65536
+    if gy > 32768: gy -= 65536
+    if gz > 32768: gz -= 65536
+    return gx / 131.0, gy / 131.0, gz / 131.0
 
-def live_plot_intensities():
-    plt.ion()
-    fig, ax = plt.subplots(figsize=(10, 5))
-    ax.set_ylim(0, 3.5)
-    ax.set_xlabel("Time (s)")
-    ax.set_ylabel("Intensity")
-    ax.set_title("Live Photodiode Intensities")
-    
-    colors = ['r', 'g', 'b', 'c', 'm', 'y']
-    lines = []
-    for i in range(6):
-        line, = ax.plot([], [], label=f"Diode {i+1}", color=colors[i])
-        lines.append(line)
-    
-    ax.legend(loc='upper right')
-    max_points = 100
-    times = []
-    intensities_data = [[] for _ in range(6)]
-    start_time = time.time()
-    
-    try:
-        while True:
-            current_time = time.time() - start_time
-            
-            # Small delay before reading to stabilize SPI bus
-            time.sleep(0.001)
-            intensities = get_intensities()
-            times.append(current_time)
-            
-            for i in range(6):
-                intensities_data[i].append(intensities[i])
-            
-            # Trim
-            if len(times) > max_points:
-                times = times[-max_points:]
-                for i in range(6):
-                    intensities_data[i] = intensities_data[i][-max_points:]
-            
-            # Update plot
-            for i, line in enumerate(lines):
-                line.set_data(times, intensities_data[i])
-            
-            # Update x-axis
-            if times:
-                ax.set_xlim(times[0], times[-1])
-            
-            fig.canvas.draw()
-            fig.canvas.flush_events()
-            
-            # Longer pause to prevent resource contention
-            plt.pause(0.1)
-            
-    except KeyboardInterrupt:
-        plt.close(fig)
-        spi.close()  # Clean up SPI
-    except Exception as e:
-        print(f"Error: {e}")
-        plt.close(fig)
-        spi.close()  # Clean up SPI on error
+# Calibrate bias
+print("Keep still - calibrating...")
+cal = []
+for _ in range(200):
+    cal.append(read_gyro())
+    time.sleep(0.008)
+bias = np.mean(cal, axis=0)
+print(f"Bias: gx={bias[0]:+.1f}  gy={bias[1]:+.1f}  gz={bias[2]:+.1f}")
+print(f"\nNow rotate one axis at a time (right-hand rule):")
+print(f"  +X rotation → gx should go positive")
+print(f"  +Y rotation → gy should go positive")
+print(f"  +Z rotation → gz should go positive\n")
 
-if __name__ == "__main__":
-    try:
-        print("Starting photodiode monitoring with hardware SPI...")
-        print("Press Ctrl+C to exit")
-        live_plot_intensities()
-    finally:
-        try:
-            spi.close()  # Ensure SPI is closed even on errors
-            print("SPI closed.")
-        except:
-            pass
+try:
+    while True:
+        gx, gy, gz = read_gyro()
+        gx -= bias[0]
+        gy -= bias[1]
+        gz -= bias[2]
+        
+        # Highlight which axis is active
+        labels = ['  ', '  ', '  ']
+        vals = [gx, gy, gz]
+        max_idx = np.argmax(np.abs(vals))
+        if abs(vals[max_idx]) > 5.0:
+            labels[max_idx] = '<<'
+        
+        print(f"gx: {gx:+7.1f} {labels[0]} gy: {gy:+7.1f} {labels[1]} gz: {gz:+7.1f} {labels[2]} deg/s")
+        time.sleep(0.1)
+except KeyboardInterrupt:
+    bus.close()

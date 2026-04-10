@@ -151,7 +151,7 @@ def read_magnetometer(bus):
                       [0.0192, 0.0149, 0.9455]])
         b = np.array([2.4272e3, -1.0466e4, -1.8667e4])              
 
-        scale_factors = np.array([10.0954277, 9.96587204, 10.33529979])
+        scale_factors = np.array([10.08706565, 9.95520947, 10.33009517])
 
         out=(d-b)@A * scale_factors
 
@@ -164,7 +164,7 @@ def read_magnetometer(bus):
         st2 = bus.read_byte_data(address, 0x1B)     # Read ST2 required
     except TimeoutError:
         st2 = bus.read_byte_data(address, 0x1B)     # Read ST2 required
-        return read_magnetometer(bus)  # TODO: this may be bad, could lead to getting stuck in infinite loop 
+        return np.array([0.0, 0.0, 0.0])  # TODO: this may be bad, could lead to getting stuck in infinite loop 
     except Exception as e:
         st2 = bus.read_byte_data(address, 0x1B)     # Read ST2 required
         raise e
@@ -188,12 +188,12 @@ if __name__ == "__main__":
                 print(new_vec)
                 # quiv = visualize_vector(new_vec, quiv, ax)
 
-#GPIO.cleanup()
-lgpio.gpio_free(h, DRDY_pin)
-lgpio.gpio_free(h, RSTN_pin)
-lgpio.gpiochip_close(h)
-# 0b1011
-# 0x456
+    #GPIO.cleanup()
+    lgpio.gpio_free(h, DRDY_pin)
+    lgpio.gpio_free(h, RSTN_pin)
+    lgpio.gpiochip_close(h)
+    # 0b1011
+    # 0x456
 
 
 

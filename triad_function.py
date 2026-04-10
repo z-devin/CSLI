@@ -1,4 +1,3 @@
-# triad_sensor.py
 import numpy as np
 from scipy.spatial.transform import Rotation
 import time
@@ -42,7 +41,7 @@ magnetometer_setup(bus)
 
 # Reference vectors in inertial frame
 r1_inertial = np.array([0.0, -1.0, 0.0])
-B_NED = np.array([-0.70553762, 0.10511136, 0.70082871])
+B_NED = np.array([21705.09411252, 34621.40087599, -7181.48074513])
 r2_inertial = B_NED / np.linalg.norm(B_NED)
 
 def get_triad_data():
@@ -57,6 +56,9 @@ def get_triad_data():
     b1_body, _, _ = get_light_vector()
     b2_body = read_magnetometer(bus)
     
+    if np.all(b2_body == 0):
+            return False, np.zeros(4)
+
     # Compute rotation matrix using TRIAD
     R_BI = triad(b1_body, b2_body, r1_inertial, r2_inertial)
     

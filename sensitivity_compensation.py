@@ -63,7 +63,7 @@ def compute_scale_factors(bus, averages=4):
 
 if __name__ == "__main__":
     with SMBus(1) as bus:
-        scale_factors = compute_scale_factors(bus,averages=16)
+        scale_factors = compute_scale_factors(bus,averages=100)
         print(f"Scale factors (nT/LSB): {scale_factors}")
 
     lgpio.gpio_free(h, DRDY_PIN)

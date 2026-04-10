@@ -44,6 +44,6 @@ with open('photodiode_data.csv', 'w', newline='') as f:
         sun_vec, _, _ = get_light_vector()
         writer.writerow([index, sun_vec[0], sun_vec[1], sun_vec[2]])
         f.flush()
-        print(index)
+        print(sun_vec)
         index += 1
 

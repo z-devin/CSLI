@@ -30,7 +30,7 @@ def MPU_Init():
 	bus.write_byte_data(Device_Address, CONFIG, 2)
 	
 	#Write to Gyro configuration register
-	bus.write_byte_data(Device_Address, GYRO_CONFIG, 24)
+	bus.write_byte_data(Device_Address, GYRO_CONFIG, 0)
 	
 	#Write to interrupt enable register
 	bus.write_byte_data(Device_Address, INT_ENABLE, 1)
@@ -57,7 +57,7 @@ def get_imu_data():
         Gy = gyro_y/131.0
         Gz = gyro_z/131.0
 
-        omega_measured = np.array([Gx, Gy, Gz])
+        omega_measured = np.radians(np.array([Gx, Gy, Gz]))
         return omega_measured
 
 if __name__ == "__main__":  
